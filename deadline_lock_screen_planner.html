@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChronoGlass | Focus & Deadline Lock Screen Planner</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- FontAwesome for fallback icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts (Inter & Outfit) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Outfit', 'sans-serif'],
+                    },
+                    colors: {
+                        glass: {
+                            base: 'rgba(18, 22, 36, 0.65)',
+                            card: 'rgba(28, 34, 56, 0.55)',
+                            border: 'rgba(255, 255, 255, 0.08)',
+                            hover: 'rgba(255, 255, 255, 0.12)',
+                            input: 'rgba(15, 18, 30, 0.7)'
+                        },
+                        brand: {
+                            cyan: '#00f2fe',
+                            blue: '#4facfe',
+                            purple: '#7f00ff',
+                            magenta: '#e100ff',
+                            amber: '#ffb703'
+                        }
+                    },
+                    boxShadow: {
+                        'glow-cyan': '0 0 25px -5px rgba(0, 242, 254, 0.3)',
+                        'glow-purple': '0 0 30px -5px rgba(127, 0, 255, 0.4)',
+                        'glass-card': '0 8px 32px 0 rgba(0, 0, 0, 0.37)'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #0b0e17;
+            color: #f1f5f9;
+            overflow-x: hidden;
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Glassmorphism utilities */
+        .glass-panel {
+            background: rgba(22, 27, 46, 0.65);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.09);
+        }
+
+        .glass-card {
+            background: rgba(30, 37, 62, 0.45);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+        }
+
+        .glass-input {
+            background: rgba(12, 16, 28, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        .glass-input:focus {
+            border-color: #4facfe;
+            outline: none;
+            box-shadow: 0 0 12px rgba(79, 172, 254, 0.3);
+        }
+
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(10, 13, 22, 0.5);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        /* Ambient background glow animations */
+        @keyframes float-slow {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(30px, -20px) scale(1.08); }
+        }
+        @keyframes float-reverse {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(-25px, 25px) scale(0.95); }
+        }
+
+        .bg-glow-1 {
+            animation: float-slow 14s ease-in-out infinite;
+        }
+        .bg-glow-2 {
+            animation: float-reverse 18s ease-in-out infinite;
+        }
+
+        /* Mobile Lock screen frame wallpaper styling */
+        .phone-mockup {
+            background: radial-gradient(circle at 50% 20%, #1a1e36 0%, #0a0d18 100%);
+            box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 0 12px #1e2438, 0 0 0 14px rgba(255,255,255,0.1);
+        }
+    </style>
+</head>
+<body class="min-h-screen relative flex flex-col justify-between selection:bg-cyan-500 selection:text-black">
+
+    <!-- Ambient Glowing Background Orbs -->
+    <div class="fixed inset-0 overflow-hidden pointer-events-none z-0">
+        <div class="bg-glow-1 absolute -top-32 -left-32 w-96 h-96 bg-purple-700/30 rounded-full blur-[120px]"></div>
+        <div class="bg-glow-2 absolute top-1/3 -right-20 w-[30rem] h-[30rem] bg-cyan-600/20 rounded-full blur-[140px]"></div>
+        <div class="bg-glow-1 absolute -bottom-32 left-1/3 w-[35rem] h-[35rem] bg-indigo-900/30 rounded-full blur-[160px]"></div>
+    </div>
+
+    <!-- MAIN CONTAINER -->
+    <div class="relative z-10 flex-1 flex flex-col max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        
+        <!-- TOP HEADER NAVBAR -->
+        <header class="flex items-center justify-between glass-panel rounded-2xl px-6 py-4 mb-6 shadow-xl">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center text-white shadow-glow-cyan">
+                    <i data-lucide="timer" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="font-display font-bold text-xl tracking-tight text-white flex items-center gap-2">
+                        ChronoGlass <span class="text-xs px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-sans font-normal">v2.4</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">Deadline & Lock Screen Milestone Studio</p>
+                </div>
+            </div>
+
+            <!-- Navigation Tabs -->
+            <div class="hidden md:flex items-center bg-slate-900/60 p-1.5 rounded-xl border border-white/5 gap-1">
+                <button onclick="switchTab('dashboard')" id="tab-btn-dashboard" class="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-cyan-300 border border-cyan-500/30">
+                    <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Dashboard
+                </button>
+                <button onclick="switchTab('lockscreen')" id="tab-btn-lockscreen" class="px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white transition-all duration-200 flex items-center gap-2">
+                    <i data-lucide="smartphone" class="w-4 h-4"></i> Lock Screen Studio
+                </button>
+                <button onclick="switchTab('reminders')" id="tab-btn-reminders" class="px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white transition-all duration-200 flex items-center gap-2">
+                    <i data-lucide="bell" class="w-4 h-4"></i> Accountability
+                </button>
+            </div>
+
+            <!-- Action Button -->
+            <button onclick="openOnboardingModal()" class="px-4 py-2 rounded-xl text-sm font-medium bg-white/10 hover:bg-white/20 border border-white/10 text-white transition-all flex items-center gap-2 shadow-lg active:scale-95">
+                <i data-lucide="plus-circle" class="w-4 h-4 text-cyan-400"></i> New Goal Workflow
+            </button>
+        </header>
+
+        <!-- MAIN DASHBOARD CONTENT (Dynamic View Container) -->
+        <main class="flex-1">
+
+            <!-- TAB 1: MAIN DASHBOARD VIEW -->
+            <div id="view-dashboard" class="space-y-6">
+                
+                <!-- Deadline Summary Hero Card -->
+                <div class="glass-panel rounded-3xl p-6 sm:p-8 relative overflow-hidden shadow-glass-card">
+                    <div class="absolute -right-12 -top-12 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                    
+                    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
+                        <div class="space-y-3 max-w-2xl">
+                            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/20 border border-purple-500/30 text-purple-300 text-xs font-medium">
+                                <span class="w-2 h-2 rounded-full bg-purple-400 animate-pulse"></span>
+                                Active Target Goal
+                            </div>
+                            <h2 id="hero-title" class="text-2xl sm:text-4xl font-display font-extrabold text-white tracking-tight">
+                                DataCamp Expiry & Exam Prep
+                            </h2>
+                            <p id="hero-goals" class="text-slate-300 text-sm sm:text-base leading-relaxed">
+                                Complete Data Analyst Track & start PowerBI Track before subscription expires on <span id="hero-target-date-str" class="text-cyan-300 font-semibold">December 23, 2026</span>.
+                            </p>
+                        </div>
+
+                        <!-- Main Countdown Clock Display -->
+                        <div class="bg-slate-950/70 border border-white/10 rounded-2xl p-4 sm:p-5 flex items-center justify-around gap-3 sm:gap-6 shadow-2xl backdrop-blur-md">
+                            <div class="text-center">
+                                <span id="cd-days" class="font-display text-2xl sm:text-4xl font-bold text-white block">00</span>
+                                <span class="text-[10px] sm:text-xs text-slate-400 uppercase tracking-wider">Days</span>
+                            </div>
+                            <span class="text-xl sm:text-2xl text-slate-600 font-light">:</span>
+                            <div class="text-center">
+                                <span id="cd-hours" class="font-display text-2xl sm:text-4xl font-bold text-cyan-400 block">00</span>
+                                <span class="text-[10px] sm:text-xs text-slate-400 uppercase tracking-wider">Hours</span>
+                            </div>
+                            <span class="text-xl sm:text-2xl text-slate-600 font-light">:</span>
+                            <div class="text-center">
+                                <span id="cd-mins" class="font-display text-2xl sm:text-4xl font-bold text-cyan-400 block">00</span>
+                                <span class="text-[10px] sm:text-xs text-slate-400 uppercase tracking-wider">Mins</span>
+                            </div>
+                            <span class="text-xl sm:text-2xl text-slate-600 font-light">:</span>
+                            <div class="text-center">
+                                <span id="cd-secs" class="font-display text-2xl sm:text-4xl font-bold text-purple-400 block">00</span>
+                                <span class="text-[10px] sm:text-xs text-slate-400 uppercase tracking-wider">Secs</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Target Progress Bar -->
+                    <div class="mt-8 space-y-2">
+                        <div class="flex justify-between items-center text-xs text-slate-300">
+                            <span class="flex items-center gap-1.5 font-medium"><i data-lucide="flag" class="w-3.5 h-3.5 text-cyan-400"></i> Total Milestone Progress</span>
+                            <span id="overall-progress-text" class="font-bold text-cyan-300">0% Completed</span>
+                        </div>
+                        <div class="w-full h-3 bg-slate-900/80 rounded-full p-0.5 border border-white/5 overflow-hidden">
+                            <div id="overall-progress-bar" class="h-full bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-600 rounded-full transition-all duration-500 w-0"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DYNAMIC T-MINUS BACKWARD PLANNER GRID -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    
+                    <!-- Left 2 Columns: Milestone Timeline -->
+                    <div class="lg:col-span-2 space-y-4">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <i data-lucide="milestone" class="w-5 h-5 text-cyan-400"></i>
+                                <h3 class="font-display font-bold text-lg text-white">Backward T-Minus Plan</h3>
+                            </div>
+                            <span class="text-xs text-slate-400">Strictly 5-word milestones</span>
+                        </div>
+
+                        <!-- Milestones List Container -->
+                        <div id="milestone-list-container" class="space-y-3">
+                            <!-- Injected by JavaScript -->
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Quick Widgets & Lockscreen Preview Card -->
+                    <div class="space-y-6">
+                        
+                        <!-- Lockscreen Preview Widget Card -->
+                        <div class="glass-panel rounded-2xl p-5 space-y-4 border border-white/10 shadow-lg">
+                            <div class="flex items-center justify-between">
+                                <h4 class="font-display font-semibold text-white text-sm flex items-center gap-2">
+                                    <i data-lucide="smartphone" class="w-4 h-4 text-purple-400"></i> Lock Screen Mini Widget
+                                </h4>
+                                <button onclick="switchTab('lockscreen')" class="text-xs text-cyan-400 hover:text-cyan-300 underline">Full Studio</button>
+                            </div>
+
+                            <!-- Mini Widget Component preview -->
+                            <div class="bg-gradient-to-b from-slate-900/90 to-slate-950/90 rounded-2xl p-4 border border-white/10 shadow-2xl relative overflow-hidden">
+                                <div class="absolute -right-8 -bottom-8 w-32 h-32 bg-purple-600/30 rounded-full blur-2xl pointer-events-none"></div>
+                                <div class="text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1">Upcoming Deadline</div>
+                                <div id="mini-widget-title" class="font-display font-bold text-white text-base truncate mb-2">DataCamp Expiry & Exam 🎓</div>
+                                
+                                <div class="bg-slate-800/50 rounded-xl p-3 border border-white/5 flex justify-between items-center mb-3">
+                                    <div>
+                                        <div id="mini-widget-days" class="text-xl font-bold font-display text-cyan-300">46 Days</div>
+                                        <div class="text-[10px] text-slate-400">Remaining Time</div>
+                                    </div>
+                                    <div class="text-right">
+                                        <div id="mini-widget-percent" class="text-sm font-semibold text-purple-300">25%</div>
+                                        <div class="text-[10px] text-slate-400">Pace Ready</div>
+                                    </div>
+                                </div>
+
+                                <div class="space-y-1.5 text-xs">
+                                    <div class="text-[10px] text-slate-400 font-semibold">NEXT MILESTONE</div>
+                                    <div id="mini-widget-next-task" class="flex items-center gap-2 text-slate-200">
+                                        <i data-lucide="circle" class="w-3.5 h-3.5 text-cyan-400"></i> Finish Data Analyst Track
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Accountability Reminders Card -->
+                        <div class="glass-panel rounded-2xl p-5 space-y-4">
+                            <div class="flex items-center justify-between">
+                                <h4 class="font-display font-semibold text-white text-sm flex items-center gap-2">
+                                    <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400"></i> Accountability Streak
+                                </h4>
+                                <span class="px-2 py-0.5 rounded-full text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Active</span>
+                            </div>
+
+                            <div class="flex items-center gap-4">
+                                <div class="w-14 h-14 rounded-2xl bg-slate-900/80 border border-white/10 flex flex-col items-center justify-center text-center">
+                                    <span class="text-xs text-slate-400 font-medium">STREAK</span>
+                                    <span id="streak-count" class="font-display font-extrabold text-lg text-amber-400">5 Days</span>
+                                </div>
+                                <div class="flex-1 space-y-1">
+                                    <p class="text-xs text-slate-300 font-medium">Daily Accountability Push</p>
+                                    <p class="text-[11px] text-slate-400">Scheduled daily at <span id="reminder-time-display" class="text-cyan-300 font-semibold">08:00 AM</span></p>
+                                </div>
+                            </div>
+
+                            <button onclick="triggerSimulatedNotification()" class="w-full py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-white/10 transition-all flex items-center justify-center gap-2">
+                                <i data-lucide="send" class="w-3.5 h-3.5 text-cyan-400"></i> Test Reminder Notification
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: LOCK SCREEN STUDIO VIEW -->
+            <div id="view-lockscreen" class="hidden space-y-6">
+                <div class="flex flex-col md:flex-row items-center justify-between gap-4 glass-panel rounded-2xl p-6">
+                    <div>
+                        <h2 class="font-display font-bold text-2xl text-white">Custom Lock Screen Studio</h2>
+                        <p class="text-sm text-slate-400">Design dynamic wallpaper lockscreen widgets inspired by dark frosted aesthetic</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <label class="text-xs text-slate-300">Theme Glow:</label>
+                        <select id="lockscreen-theme-select" onchange="changeLockscreenTheme(this.value)" class="glass-input text-xs rounded-xl px-3 py-2 text-white">
+                            <option value="cyan-purple">Neon Cyan & Purple (Default)</option>
+                            <option value="emerald-teal">Emerald & Teal Focus</option>
+                            <option value="sunset-orange">Sunset Magenta & Amber</option>
+                            <option value="midnight-blue">Deep Midnight Blue</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Mobile Device Preview Stand -->
+                <div class="flex justify-center py-6">
+                    <div class="w-full max-w-sm h-[720px] phone-mockup rounded-[48px] p-5 relative flex flex-col justify-between overflow-hidden border-4 border-slate-700 shadow-2xl">
+                        
+                        <!-- Top Phone Notch/Island & Lock Screen Time Header -->
+                        <div class="text-center pt-4 space-y-1 z-20">
+                            <!-- Dynamic Lockscreen Date -->
+                            <div id="ls-current-date" class="text-slate-300 text-xs font-medium tracking-wide uppercase">Saturday, November 7</div>
+                            <!-- Dynamic Lockscreen Time -->
+                            <div id="ls-current-time" class="font-display text-6xl font-extrabold text-white tracking-tight drop-shadow-md">12:45</div>
+                        </div>
+
+                        <!-- Glowing Backdrop Aura for Mockup -->
+                        <div id="ls-glow-backdrop" class="absolute inset-x-8 top-1/3 bottom-1/4 bg-gradient-to-tr from-cyan-600/40 via-purple-600/40 to-indigo-600/30 rounded-full blur-3xl pointer-events-none transition-all duration-500"></div>
+
+                        <!-- MAIN FROSTED GLASS WIDGET CARD (Inspired by NoteWise / Tasklist UI) -->
+                        <div class="glass-panel rounded-3xl p-5 backdrop-blur-2xl border border-white/20 shadow-2xl z-20 relative space-y-4 my-auto">
+                            
+                            <!-- Widget Header -->
+                            <div class="text-center space-y-0.5">
+                                <span class="text-[10px] uppercase font-bold tracking-widest text-slate-400">UPCOMING DEADLINE</span>
+                                <h3 id="ls-widget-title" class="font-display font-extrabold text-lg text-white flex items-center justify-center gap-1.5">
+                                    DataCamp Expiry & Exam 🎓
+                                </h3>
+                            </div>
+
+                            <!-- Big Digital Countdown Banner -->
+                            <div class="bg-slate-950/80 rounded-2xl p-3 border border-white/10 text-center shadow-inner">
+                                <div id="ls-countdown-banner" class="font-display text-2xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-purple-400">
+                                    00:00:00:00
+                                </div>
+                                <div class="flex justify-around text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1 px-2">
+                                    <span>Days</span><span>Hrs</span><span>Mins</span><span>Secs</span>
+                                </div>
+                            </div>
+
+                            <!-- Completion Slider Bar -->
+                            <div class="space-y-1">
+                                <div class="flex justify-between text-[11px] font-semibold text-slate-300">
+                                    <span>Progress Pace</span>
+                                    <span id="ls-progress-percent" class="text-cyan-300">0% Completed</span>
+                                </div>
+                                <div class="w-full h-2 bg-slate-900 rounded-full overflow-hidden p-0.5 border border-white/5">
+                                    <div id="ls-progress-bar-inner" class="h-full bg-gradient-to-r from-cyan-400 to-purple-500 rounded-full w-0 transition-all duration-300"></div>
+                                </div>
+                            </div>
+
+                            <!-- Preparation Task Checklist Section -->
+                            <div class="bg-slate-900/60 rounded-2xl p-3 border border-white/5 space-y-2">
+                                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Preparation Checklist</div>
+                                <div id="ls-checklist-items" class="space-y-1.5 text-xs text-slate-200">
+                                    <!-- Dynamic Checklist items injected -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Phone Bottom Footer Bar & Swipe Hint -->
+                        <div class="text-center pb-2 z-20 space-y-3">
+                            <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-900/80 border border-white/10 text-xs text-slate-300 backdrop-blur-md">
+                                <span>swipe to open</span>
+                                <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+                            </div>
+                            <div class="w-32 h-1 bg-white/40 rounded-full mx-auto"></div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: ACCOUNTABILITY & REMINDERS VIEW -->
+            <div id="view-reminders" class="hidden space-y-6">
+                <div class="glass-panel rounded-2xl p-6 max-w-3xl mx-auto space-y-6 shadow-xl">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                            <i data-lucide="bell-ring" class="w-6 h-6"></i>
+                        </div>
+                        <div>
+                            <h2 class="font-display font-bold text-2xl text-white">Daily Accountability System</h2>
+                            <p class="text-sm text-slate-400">Automated notification reminders to keep you on schedule</p>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4 pt-4 border-t border-white/10">
+                        <div class="flex items-center justify-between p-4 rounded-xl bg-slate-900/60 border border-white/5">
+                            <div>
+                                <h4 class="font-semibold text-white text-sm">Enable Daily Morning Push</h4>
+                                <p class="text-xs text-slate-400">Receive milestone updates & lockscreen countdown sync</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="reminder-toggle" checked onchange="toggleReminders(this.checked)" class="sr-only peer">
+                                <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"></div>
+                            </label>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div class="p-4 rounded-xl bg-slate-900/60 border border-white/5 space-y-2">
+                                <label class="text-xs font-medium text-slate-300">Daily Alert Time</label>
+                                <input type="time" id="reminder-time-input" value="08:00" onchange="updateReminderTime(this.value)" class="w-full glass-input rounded-xl px-4 py-2.5 text-white text-sm">
+                            </div>
+                            <div class="p-4 rounded-xl bg-slate-900/60 border border-white/5 space-y-2">
+                                <label class="text-xs font-medium text-slate-300">Accountability Partner Email (Optional)</label>
+                                <input type="email" placeholder="study-buddy@example.com" class="w-full glass-input rounded-xl px-4 py-2.5 text-white text-sm">
+                            </div>
+                        </div>
+
+                        <div class="p-4 rounded-xl bg-cyan-950/30 border border-cyan-500/20 text-xs text-cyan-200 space-y-2">
+                            <div class="font-semibold flex items-center gap-1.5"><i data-lucide="info" class="w-4 h-4"></i> Accountability Protocol</div>
+                            <p class="leading-relaxed">Your T-minus milestones will be evaluated daily. If milestones fall behind schedule, lockscreen notifications will shift to priority alert mode.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- FOOTER -->
+        <footer class="mt-8 py-4 border-t border-white/5 text-center text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-2">
+            <span>Powered by Gemini Deadline Architecture • Frosted Glass Aesthetic</span>
+            <div class="flex items-center gap-4">
+                <a href="#" onclick="openOnboardingModal(); return false;" class="hover:text-slate-300 transition-colors">Re-run Questionnaire Workflow</a>
+            </div>
+        </footer>
+    </div>
+
+    <!-- MODAL: INTERACTIVE QUESTIONNAIRE WORKFLOW -->
+    <div id="onboarding-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md hidden transition-all duration-300">
+        <div class="glass-panel rounded-3xl max-w-xl w-full p-6 sm:p-8 space-y-6 border border-white/15 shadow-2xl relative">
+            
+            <button onclick="closeOnboardingModal()" class="absolute top-5 right-5 text-slate-400 hover:text-white transition-colors">
+                <i data-lucide="x" class="w-6 h-6"></i>
+            </button>
+
+            <!-- Modal Header -->
+            <div class="space-y-1">
+                <div class="flex items-center gap-2 text-cyan-400 text-xs font-bold uppercase tracking-wider">
+                    <i data-lucide="sparkles" class="w-4 h-4"></i> Goal & Deadline Setup Workflow
+                </div>
+                <h3 class="font-display font-extrabold text-2xl text-white">Let's build your backward plan</h3>
+                <p class="text-xs text-slate-400">Answer 3 quick questions about your schedule and goals.</p>
+            </div>
+
+            <!-- Workflow Progress Indicator -->
+            <div class="flex items-center gap-2">
+                <div id="step-dot-1" class="h-1.5 flex-1 rounded-full bg-cyan-400"></div>
+                <div id="step-dot-2" class="h-1.5 flex-1 rounded-full bg-slate-800"></div>
+                <div id="step-dot-3" class="h-1.5 flex-1 rounded-full bg-slate-800"></div>
+            </div>
+
+            <!-- QUESTION STEP 1: Deadline Type -->
+            <div id="workflow-step-1" class="space-y-4">
+                <label class="block text-sm font-semibold text-slate-200">1. Which specific deadline are we targeting?</label>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <button type="button" onclick="selectDeadlineType('DataCamp Subscription Expiry & Exam')" class="q-type-btn p-4 rounded-2xl bg-slate-900/80 hover:bg-slate-800 border border-cyan-500/50 text-left transition-all group">
+                        <i data-lucide="graduation-cap" class="w-5 h-5 text-cyan-400 mb-2 group-hover:scale-110 transition-transform"></i>
+                        <div class="text-xs font-bold text-white">DataCamp & Exam</div>
+                        <div class="text-[11px] text-slate-400">Subscription & Certifications</div>
+                    </button>
+                    <button type="button" onclick="selectDeadlineType('Work Project Deliverable')" class="q-type-btn p-4 rounded-2xl bg-slate-900/80 hover:bg-slate-800 border border-white/5 text-left transition-all group">
+                        <i data-lucide="briefcase" class="w-5 h-5 text-purple-400 mb-2 group-hover:scale-110 transition-transform"></i>
+                        <div class="text-xs font-bold text-white">Work Deliverable</div>
+                        <div class="text-[11px] text-slate-400">Key performance milestones</div>
+                    </button>
+                    <button type="button" onclick="selectDeadlineType('Thanksgiving Gathering')" class="q-type-btn p-4 rounded-2xl bg-slate-900/80 hover:bg-slate-800 border border-white/5 text-left transition-all group">
+                        <i data-lucide="utensils" class="w-5 h-5 text-amber-400 mb-2 group-hover:scale-110 transition-transform"></i>
+                        <div class="text-xs font-bold text-white">Thanksgiving / Event</div>
+                        <div class="text-[11px] text-slate-400">Holiday & Event prep</div>
+                    </button>
+                    <button type="button" onclick="selectDeadlineType('Custom Personal Goal')" class="q-type-btn p-4 rounded-2xl bg-slate-900/80 hover:bg-slate-800 border border-white/5 text-left transition-all group">
+                        <i data-lucide="target" class="w-5 h-5 text-emerald-400 mb-2 group-hover:scale-110 transition-transform"></i>
+                        <div class="text-xs font-bold text-white">Custom Goal</div>
+                        <div class="text-[11px] text-slate-400">Custom deadline schedule</div>
+                    </button>
+                </div>
+                <input type="text" id="custom-deadline-type" placeholder="Or type target event title..." class="w-full glass-input rounded-xl px-4 py-2.5 text-sm text-white mt-2">
+            </div>
+
+            <!-- QUESTION STEP 2: Target Date -->
+            <div id="workflow-step-2" class="space-y-4 hidden">
+                <label class="block text-sm font-semibold text-slate-200">2. What is your target deadline date?</label>
+                <div class="space-y-2">
+                    <input type="date" id="target-date-input" value="2026-12-23" class="w-full glass-input rounded-xl px-4 py-3 text-white text-base">
+                    <p class="text-xs text-slate-400">Default pre-filled for DataCamp Expiry: <span class="text-cyan-300">December 23, 2026</span></p>
+                </div>
+            </div>
+
+            <!-- QUESTION STEP 3: Goals & Deliverables -->
+            <div id="workflow-step-3" class="space-y-4 hidden">
+                <label class="block text-sm font-semibold text-slate-200">3. What are your top goals before time runs out?</label>
+                <textarea id="target-goals-input" rows="3" class="w-full glass-input rounded-xl p-4 text-sm text-white placeholder-slate-500" placeholder="e.g. Complete Data Analyst Track & start PowerBI Track"></textarea>
+            </div>
+
+            <!-- Modal Action Buttons -->
+            <div class="flex items-center justify-between pt-4 border-t border-white/10">
+                <button type="button" id="prev-step-btn" onclick="navigateStep(-1)" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white transition-colors invisible">
+                    Back
+                </button>
+                <button type="button" id="next-step-btn" onclick="navigateStep(1)" class="px-6 py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-glow-cyan transition-all flex items-center gap-2">
+                    Continue <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- SIMULATED NOTIFICATION TOAST -->
+    <div id="toast-notification" class="fixed bottom-6 right-6 z-50 max-w-sm glass-panel border border-cyan-500/40 rounded-2xl p-4 shadow-2xl transform translate-y-32 opacity-0 transition-all duration-300 pointer-events-none">
+        <div class="flex items-start gap-3">
+            <div class="w-8 h-8 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
+                <i data-lucide="bell" class="w-4 h-4"></i>
+            </div>
+            <div class="space-y-1">
+                <h5 class="font-display font-bold text-xs text-white" id="toast-title">Accountability Reminder</h5>
+                <p class="text-[11px] text-slate-300 leading-snug" id="toast-body">T-14 Milestone Due soon: Complete Data Analyst Track!</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT APPLICATION LOGIC -->
+    <script>
+        // APPLICATION STATE
+        const state = {
+            title: "DataCamp Expiry & Exam",
+            targetDate: "2026-12-23",
+            goals: "Complete Data Analyst Track & start PowerBI Track",
+            currentStep: 1,
+            remindersEnabled: true,
+            reminderTime: "08:00",
+            streak: 5,
+            theme: "cyan-purple",
+            milestones: [
+                { id: 1, dayMinus: 14, task: "Finish Data Analyst Track", completed: false, subtasks: ["Complete SQL Case Studies", "Take Final Exam Mock"] },
+                { id: 2, dayMinus: 7, task: "Complete PowerBI Track Basics", completed: false, subtasks: ["Watch PowerBI Data Prep", "Build Sample Dashboard"] },
+                { id: 3, dayMinus: 3, task: "Finalize Full Practice Exam", completed: false, subtasks: ["Review Wrong Answers", "Speed Practice Test"] },
+                { id: 4, dayMinus: 1, task: "Quick Review and Rest", completed: false, subtasks: ["Cheat sheet skim", "Good sleep schedule"] }
+            ]
+        };
+
+        // ON LOAD INITIALIZATION
+        window.onload = function() {
+            lucide.createIcons();
+            updateAllViews();
+            startCountdownLoop();
+            setInterval(updateLockscreenTime, 1000);
+            updateLockscreenTime();
+        };
+
+        // NAVIGATION TAB SWITCHING
+        function switchTab(tabName) {
+            const tabs = ['dashboard', 'lockscreen', 'reminders'];
+            tabs.forEach(t => {
+                const viewEl = document.getElementById(`view-${t}`);
+                const btnEl = document.getElementById(`tab-btn-${t}`);
+                if (t === tabName) {
+                    viewEl.classList.remove('hidden');
+                    btnEl.className = "px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-cyan-300 border border-cyan-500/30";
+                } else {
+                    viewEl.classList.add('hidden');
+                    btnEl.className = "px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white transition-all duration-200 flex items-center gap-2";
+                }
+            });
+        }
+
+        // WORKFLOW QUESTIONNAIRE LOGIC
+        function openOnboardingModal() {
+            state.currentStep = 1;
+            updateStepDisplay();
+            document.getElementById('onboarding-modal').classList.remove('hidden');
+        }
+
+        function closeOnboardingModal() {
+            document.getElementById('onboarding-modal').classList.add('hidden');
+        }
+
+        function selectDeadlineType(type) {
+            document.getElementById('custom-deadline-type').value = type;
+        }
+
+        function navigateStep(direction) {
+            if (direction === 1) {
+                if (state.currentStep === 1) {
+                    const customType = document.getElementById('custom-deadline-type').value.trim();
+                    if (customType) state.title = customType;
+                } else if (state.currentStep === 2) {
+                    const dateInput = document.getElementById('target-date-input').value;
+                    if (dateInput) state.targetDate = dateInput;
+                } else if (state.currentStep === 3) {
+                    const goalsInput = document.getElementById('target-goals-input').value.trim();
+                    if (goalsInput) state.goals = goalsInput;
+                    
+                    // Workflow finished - regenerate dynamic milestone dates and update UI
+                    recalculateMilestones();
+                    updateAllViews();
+                    closeOnboardingModal();
+                    triggerSimulatedNotification("Plan Generated", "Your new T-Minus roadmap is ready!");
+                    return;
+                }
+                state.currentStep = Math.min(3, state.currentStep + 1);
+            } else {
+                state.currentStep = Math.max(1, state.currentStep - 1);
+            }
+            updateStepDisplay();
+        }
+
+        function updateStepDisplay() {
+            for (let i = 1; i <= 3; i++) {
+                const stepEl = document.getElementById(`workflow-step-${i}`);
+                const dotEl = document.getElementById(`step-dot-${i}`);
+                if (i === state.currentStep) {
+                    stepEl.classList.remove('hidden');
+                    dotEl.className = "h-1.5 flex-1 rounded-full bg-cyan-400";
+                } else {
+                    stepEl.classList.add('hidden');
+                    dotEl.className = "h-1.5 flex-1 rounded-full bg-slate-800";
+                }
+            }
+
+            const prevBtn = document.getElementById('prev-step-btn');
+            const nextBtn = document.getElementById('next-step-btn');
+            
+            if (state.currentStep === 1) {
+                prevBtn.classList.add('invisible');
+            } else {
+                prevBtn.classList.remove('invisible');
+            }
+
+            if (state.currentStep === 3) {
+                nextBtn.innerHTML = `Finish & Build Plan <i data-lucide="sparkles" class="w-4 h-4"></i>`;
+            } else {
+                nextBtn.innerHTML = `Continue <i data-lucide="arrow-right" class="w-4 h-4"></i>`;
+            }
+            lucide.createIcons();
+        }
+
+        // CALCULATE DATES AND REBUILD MILESTONES
+        function recalculateMilestones() {
+            const target = new Date(state.targetDate + "T00:00:00");
+            
+            // Adjust milestone tasks based on state title if custom
+            if (!state.title.includes("DataCamp")) {
+                state.milestones[0].task = "Audit priorities and setup outline";
+                state.milestones[1].task = "Complete core primary deliverables";
+                state.milestones[2].task = "Finalize reviews and polish";
+                state.milestones[3].task = "Rest and execute final check";
+            } else {
+                state.milestones[0].task = "Finish Data Analyst Track";
+                state.milestones[1].task = "Complete PowerBI Track Basics";
+                state.milestones[2].task = "Finalize Full Practice Exam";
+                state.milestones[3].task = "Quick Review and Rest";
+            }
+        }
+
+        // MAIN UPDATE UI CONTROLLER
+        function updateAllViews() {
+            // Hero card updates
+            document.getElementById('hero-title').textContent = state.title;
+            document.getElementById('hero-goals').innerHTML = `${state.goals} before <span class="text-cyan-300 font-semibold">${formatDateStr(state.targetDate)}</span>.`;
+            document.getElementById('hero-target-date-str').textContent = formatDateStr(state.targetDate);
+
+            // Render Milestone Cards
+            renderMilestoneTimeline();
+
+            // Render Lock Screen Preview
+            renderLockScreenPreview();
+
+            // Overall Progress calculation
+            calculateProgress();
+        }
+
+        // RENDER T-MINUS MILESTONES
+        function renderMilestoneTimeline() {
+            const container = document.getElementById('milestone-list-container');
+            container.innerHTML = '';
+
+            const target = new Date(state.targetDate + "T00:00:00");
+
+            state.milestones.forEach(m => {
+                const milestoneDate = new Date(target);
+                milestoneDate.setDate(target.getDate() - m.dayMinus);
+
+                const dateDisplay = milestoneDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+                const cardHtml = `
+                    <div class="glass-panel rounded-2xl p-4 sm:p-5 transition-all duration-300 border ${m.completed ? 'border-emerald-500/30 bg-emerald-950/10' : 'border-white/10 hover:border-cyan-500/30'}">
+                        <div class="flex items-start justify-between gap-4">
+                            <div class="flex items-start gap-3">
+                                <button onclick="toggleMilestone(${m.id})" class="mt-1 w-6 h-6 rounded-lg flex items-center justify-center transition-all ${m.completed ? 'bg-emerald-500 text-black' : 'bg-slate-900 border border-white/20 text-transparent hover:border-cyan-400'}">
+                                    <i data-lucide="check" class="w-4 h-4 stroke-[3]"></i>
+                                </button>
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">T-${m.dayMinus} Days</span>
+                                        <span class="text-xs text-slate-400">${dateDisplay}</span>
+                                    </div>
+                                    <h4 class="font-display font-semibold text-base text-white mt-1 ${m.completed ? 'line-through text-slate-400' : ''}">${m.task}</h4>
+                                </div>
+                            </div>
+                            <span class="text-[11px] font-medium text-slate-400 hidden sm:inline">${m.completed ? 'Done' : 'Pending'}</span>
+                        </div>
+
+                        <!-- Subtasks checklist -->
+                        <div class="mt-3 pl-9 space-y-1.5 border-t border-white/5 pt-3">
+                            ${m.subtasks.map((st, idx) => `
+                                <div class="flex items-center gap-2 text-xs text-slate-300">
+                                    <i data-lucide="circle-dot" class="w-3 h-3 text-cyan-400/70"></i>
+                                    <span>${st}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += cardHtml;
+            });
+
+            lucide.createIcons();
+        }
+
+        // RENDER LOCK SCREEN PREVIEW
+        function renderLockScreenPreview() {
+            document.getElementById('ls-widget-title').textContent = state.title;
+            document.getElementById('mini-widget-title').textContent = state.title;
+
+            const checklistContainer = document.getElementById('ls-checklist-items');
+            checklistContainer.innerHTML = '';
+
+            state.milestones.forEach(m => {
+                checklistContainer.innerHTML += `
+                    <div class="flex items-center gap-2 truncate">
+                        <i data-lucide="${m.completed ? 'check-circle-2' : 'circle'}" class="w-3.5 h-3.5 ${m.completed ? 'text-emerald-400' : 'text-cyan-400'}"></i>
+                        <span class="${m.completed ? 'line-through text-slate-400' : ''}">${m.task}</span>
+                    </div>
+                `;
+            });
+
+            // Update mini next task
+            const nextPending = state.milestones.find(m => !m.completed) || state.milestones[0];
+            document.getElementById('mini-widget-next-task').innerHTML = `
+                <i data-lucide="circle" class="w-3.5 h-3.5 text-cyan-400"></i> ${nextPending.task}
+            `;
+
+            lucide.createIcons();
+        }
+
+        // TOGGLE MILESTONE COMPLETE
+        function toggleMilestone(id) {
+            const milestone = state.milestones.find(m => m.id === id);
+            if (milestone) {
+                milestone.completed = !milestone.completed;
+                updateAllViews();
+                if (milestone.completed) {
+                    triggerSimulatedNotification("Milestone Completed! 🎉", `Great progress on: ${milestone.task}`);
+                }
+            }
+        }
+
+        // CALCULATE OVERALL PROGRESS
+        function calculateProgress() {
+            const completedCount = state.milestones.filter(m => m.completed).length;
+            const percent = Math.round((completedCount / state.milestones.length) * 100);
+
+            document.getElementById('overall-progress-text').textContent = `${percent}% Completed`;
+            document.getElementById('overall-progress-bar').style.width = `${percent}%`;
+
+            document.getElementById('ls-progress-percent').textContent = `${percent}% Completed`;
+            document.getElementById('ls-progress-bar-inner').style.width = `${percent}%`;
+
+            document.getElementById('mini-widget-percent').textContent = `${percent}%`;
+        }
+
+        // REAL-TIME COUNTDOWN TIMER LOOP
+        function startCountdownLoop() {
+            function updateClock() {
+                const now = new Date();
+                const target = new Date(state.targetDate + "T23:59:59");
+                const diff = target - now;
+
+                if (diff <= 0) {
+                    document.getElementById('cd-days').textContent = '00';
+                    document.getElementById('cd-hours').textContent = '00';
+                    document.getElementById('cd-mins').textContent = '00';
+                    document.getElementById('cd-secs').textContent = '00';
+                    return;
+                }
+
+                const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+                const mins = Math.floor((diff / 1000 / 60) % 60);
+                const secs = Math.floor((diff / 1000) % 60);
+
+                const dStr = days < 10 ? '0' + days : days;
+                const hStr = hours < 10 ? '0' + hours : hours;
+                const mStr = mins < 10 ? '0' + mins : mins;
+                const sStr = secs < 10 ? '0' + secs : secs;
+
+                // Main hero update
+                document.getElementById('cd-days').textContent = dStr;
+                document.getElementById('cd-hours').textContent = hStr;
+                document.getElementById('cd-mins').textContent = mStr;
+                document.getElementById('cd-secs').textContent = sStr;
+
+                // Lockscreen display updates
+                document.getElementById('ls-countdown-banner').textContent = `${dStr}:${hStr}:${mStr}:${sStr}`;
+                document.getElementById('mini-widget-days').textContent = `${days} Days`;
+            }
+
+            updateClock();
+            setInterval(updateClock, 1000);
+        }
+
+        // UPDATE LOCKSCREEN REAL TIME CLOCK
+        function updateLockscreenTime() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const mins = String(now.getMinutes()).padStart(2, '0');
+            const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+
+            document.getElementById('ls-current-time').textContent = `${hours}:${mins}`;
+            document.getElementById('ls-current-date').textContent = dateStr;
+        }
+
+        // CHANGE LOCKSCREEN ACCENT THEME
+        function changeLockscreenTheme(themeVal) {
+            const glow = document.getElementById('ls-glow-backdrop');
+            if (themeVal === 'cyan-purple') {
+                glow.className = "absolute inset-x-8 top-1/3 bottom-1/4 bg-gradient-to-tr from-cyan-600/40 via-purple-600/40 to-indigo-600/30 rounded-full blur-3xl pointer-events-none transition-all duration-500";
+            } else if (themeVal === 'emerald-teal') {
+                glow.className = "absolute inset-x-8 top-1/3 bottom-1/4 bg-gradient-to-tr from-emerald-500/40 via-teal-600/40 to-cyan-600/30 rounded-full blur-3xl pointer-events-none transition-all duration-500";
+            } else if (themeVal === 'sunset-orange') {
+                glow.className = "absolute inset-x-8 top-1/3 bottom-1/4 bg-gradient-to-tr from-fuchsia-600/40 via-rose-600/40 to-amber-500/30 rounded-full blur-3xl pointer-events-none transition-all duration-500";
+            } else if (themeVal === 'midnight-blue') {
+                glow.className = "absolute inset-x-8 top-1/3 bottom-1/4 bg-gradient-to-tr from-blue-700/40 via-indigo-600/40 to-slate-800/40 rounded-full blur-3xl pointer-events-none transition-all duration-500";
+            }
+        }
+
+        // ACCOUNTABILITY REMINDER SETTINGS
+        function toggleReminders(enabled) {
+            state.remindersEnabled = enabled;
+            triggerSimulatedNotification("Settings Updated", enabled ? "Daily reminders enabled." : "Daily reminders disabled.");
+        }
+
+        function updateReminderTime(timeVal) {
+            state.reminderTime = timeVal;
+            document.getElementById('reminder-time-display').textContent = formatTimeStr(timeVal);
+            triggerSimulatedNotification("Reminder Scheduled", `Daily alert set for ${formatTimeStr(timeVal)}.`);
+        }
+
+        // HELPER FUNCTIONS
+        function formatDateStr(dateString) {
+            const date = new Date(dateString + "T00:00:00");
+            return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+        }
+
+        function formatTimeStr(time24) {
+            const [h, m] = time24.split(':');
+            const date = new Date();
+            date.setHours(parseInt(h), parseInt(m));
+            return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function triggerSimulatedNotification(title, body) {
+            const toast = document.getElementById('toast-notification');
+            if (title) document.getElementById('toast-title').textContent = title;
+            if (body) document.getElementById('toast-body').textContent = body;
+
+            toast.classList.remove('translate-y-32', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+
+            setTimeout(() => {
+                toast.classList.add('translate-y-32', 'opacity-0');
+                toast.classList.remove('translate-y-0', 'opacity-100');
+            }, 3500);
+        }
+    </script>
+</body>
+</html>
